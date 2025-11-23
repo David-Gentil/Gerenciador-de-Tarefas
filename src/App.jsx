@@ -5,37 +5,49 @@ import { useEffect, useState } from "react";
 import { v4 } from "uuid";
 
 function App() {
-  const [tasks, setTasks] = useState(
-    JSON.parse(localStorage.getItem("tasks") || [])
-  );
+  // Estado inicial seguro: só acessa localStorage se estiver no cliente
+  const [tasks, setTasks] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("tasks");
+        return saved ? JSON.parse(saved) : [];
+      } catch (err) {
+        console.error("Erro ao parsear localStorage:", err);
+        return [];
+      }
+    }
+    return [];
+  });
 
+  // Sempre que tasks mudar, salva no localStorage
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+    try {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    } catch (err) {
+      console.error("Erro ao salvar no localStorage:", err);
+    }
   }, [tasks]);
 
   function onAddTaskSubmit(title, description) {
-    const newTasks = {
+    const newTask = {
       id: v4(),
-      title: title,
-      description: description,
+      title,
+      description,
       isCompleted: false,
     };
-    setTasks([...tasks, newTasks]);
+    setTasks((prev) => [...prev, newTask]);
   }
 
   function onTaskClick(taskId) {
-    const newTasks = tasks.map((task) => {
-      if (task.id == taskId) {
-        return { ...task, isCompleted: !task.isCompleted };
-      }
-      return task;
-    });
-    setTasks(newTasks);
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
+      )
+    );
   }
 
   function onDeleteTaskClick(taskId) {
-    const newTasks = tasks.filter((task) => task.id !== taskId);
-    setTasks(newTasks);
+    setTasks((prev) => prev.filter((task) => task.id !== taskId));
   }
 
   return (
